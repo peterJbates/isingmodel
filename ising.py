@@ -4,13 +4,33 @@ from matplotlib import pyplot as plt
 from math import exp
 from time import time
 
-#------------------
-#Functions Utilized
-#------------------
+#----------------
+#Global Variables
+#----------------
 
-#Creates a random array of dipole states
+start_time = time()
+n = 20                 #Used to create n x n domain
+N = n**2               #Number of atoms in domain
+iterations = 10**2     #change back to 100 * n**2 or 10^6?
+
+#creates a normalized distribution of temperature points around the mean_temp
+mean_temp = 2.27
+temps = np.random.normal(mean_temp, .64, N)
+temps = temps[(temps>1) & (temps<4)]
+n1 = 1/(iterations*N)
+nt = np.size(temps)
+magnetization = np.zeros(nt)
+energy = np.zeros(nt)
+
+specific_temps = [1,1.5,2,2.27,2.5,3] #Temps used to create domain images
+
+#-------------------------------
+#Functions Utilized by Main Loop
+#-------------------------------
+
+'''Creates a random array of dipole states'''
 def initialize(n_sites):
-    state = np.zeros((n_sites, n_sites), dtype=np.int8)
+    state = np.zeros((n_sites, n_sites))
 
     for i in range(n_sites):
         for j in range(n_sites):
@@ -21,7 +41,11 @@ def initialize(n_sites):
     return state
 
 
-#Computes dU of flipping a dipole
+'''Computes dU of a flipping a dipole.
+This is a Monte Carlo algorithm using
+the Metropolis Algorithm. It has peridic
+boundary conditions.'''
+
 def deltaU(i,j,n_sites,state):
     m = n_sites-1    #max row/column entry
 
@@ -48,32 +72,59 @@ def deltaU(i,j,n_sites,state):
     dU = 2*state[i,j]*(top+bottom+left+right)
     return dU
 
+'''Computes overall magnetism of a state'''
 def Magnetization(state):
     mag = np.sum(state)
     return mag
+
+'''Computes overall energy of a state'''
+def Energy(state):
+    global n
+    energy = 0
+    for i in range(len(state)):
+        for j in range(len(state)):
+            S = state[i,j]
+            nb = state[(i+1)%n, j] + state[i, (j+1)%n] + state[(i-1)%n, j] + state[i,(j-1)%n]
+            energy += -nb*S
+    return energy/4
 
 
 #---------
 #Main Loop
 #---------
 
-start_time = time()
-
-
-n = 10
-iterations = 100 * n**2     #change back to 100 * n**2
-mean_temp = 2.27
-temps = np.random.normal(mean_temp, .64, n**2)
-temps = temps[(temps>1) & (temps<4)]
-nt = np.size(temps)
-mag = np.zeros(nt)
-
-
 for m in range(len(temps)):
+    E1 = M1 = 0
     T = temps[m]
+    state = initialize(n)  #calls the initialize function
+
+    for x in range(iterations):
+        i = int(np.random.random()*n)
+        j = int(np.random.random()*n)
+        Ediff = deltaU(i,j,n,state) #calls the deltaU function for random dipole
+        if Ediff <= 0:
+            state[i,j] *= -1
+        else:
+            if np.random.random() < exp(-Ediff/T):
+                state[i,j] *= -1
+        Ene = Energy(state)
+        Mag = Magnetization(state)
+
+        E1 += Ene
+        M1 += Mag
+
+    magnetization[m] = n1*M1
+    energy[m] = n1*E1
+
+
+'''Creates a list of domain equilibrium states at specific temperatures.
+This list will be used to create images.'''
+fig, axs = plt.subplots(nrows=6, figsize=(3, 5))
+for m in range(len(specific_temps)):
+    T = specific_temps[m]
     state = initialize(n)
 
-    for x in range(iterations*100):
+    for x in range(iterations):
         i = int(np.random.random()*n)
         j = int(np.random.random()*n)
         Ediff = deltaU(i,j,n,state)
@@ -82,21 +133,46 @@ for m in range(len(temps)):
         else:
             if np.random.random() < exp(-Ediff/T):
                 state[i,j] *= -1
+    axs[m].set_title('T=%s' %(specific_temps[m]))
+    axs[m].imshow(state, cmap='winter')
 
-    mag[m] = Magnetization(state)/n**2
+plt.show()
+'''
+fig, axs = plt.subplots(nrows=6 figsize=(3, 5))
+axs[0,0].set_title('T=%s' %specific_temps[m])
+axs[0,0].imshow(eqstates[0], cmap='winter')
+axs[0,1].set_title('T=1.5')
+axs[0,1].imshow(eqstates[1], cmap='winter')
+axs[0,2].set_title('T=2')
+axs[0,2].imshow(eqstates[2], cmap='winter')
+axs[1,0].set_title('T=2.27')
+axs[1,0].imshow(eqstates[3], cmap='winter')
+axs[1,1].set_title('T=2.5')
+axs[1,1].imshow(eqstates[4], cmap='winter')
+axs[1,1].set_title('T=3')
+axs[1,2].imshow(eqstates[5], cmap='winter')
+plt.show()'''
 
-print(temps, mag)
-print("---%s seconds---" %(time()-start_time))
+
+
+
+print("---%s seconds---" %(time()-start_time))  #prints program run time
 
 
 #---------------------
 #Graphs and Animations
 #---------------------
 
-fig = plt.figure()
+fig = plt.figure(figsize = (27,15))
 
-sub = fig.add_subplot(2,2,2)
-plt.plot(temps, abs(mag), 'o', color='blue')
+sub = fig.add_subplot(2,2,1)
+plt.plot(temps, abs(magnetization), 'o', markerfacecolor= "blue", markersize= 3)
 plt.xlabel("Temperature (T)", fontsize=12)
 plt.ylabel("Magnetization", fontsize=12)
+
+sub = fig.add_subplot(2,2,2)
+plt.plot(temps, energy, 'o', markerfacecolor = 'green', markersize = 3)
+plt.xlabel("Temperature (T)", fontsize=12)
+plt.ylabel("Energy", fontsize=12)
+
 plt.show()
