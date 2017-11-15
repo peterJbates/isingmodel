@@ -9,9 +9,9 @@ from time import time
 #----------------
 
 start_time = time()
-n = 20                 #Used to create n x n domain
-N = n**2               #Number of atoms in domain
-iterations = 10**2     #change back to 100 * n**2 or 10^6?
+n = 20                 #used to create n x n domain
+N = n**2               #number of atoms in domain
+iterations = 10**5
 
 #creates a normalized distribution of temperature points around the mean_temp
 mean_temp = 2.27
@@ -22,7 +22,8 @@ nt = np.size(temps)
 magnetization = np.zeros(nt)
 energy = np.zeros(nt)
 
-specific_temps = [1,1.5,2,2.27,2.5,3] #Temps used to create domain images
+specific_temps = [1,1.5,2,2.27,2.5,3] #temperatures used to create domain images
+
 
 #-------------------------------
 #Functions Utilized by Main Loop
@@ -40,12 +41,10 @@ def initialize(n_sites):
                 state[i][j] = -1
     return state
 
-
 '''Computes dU of a flipping a dipole.
 This is a Monte Carlo algorithm using
 the Metropolis Algorithm. It has peridic
 boundary conditions.'''
-
 def deltaU(i,j,n_sites,state):
     m = n_sites-1    #max row/column entry
 
@@ -117,9 +116,16 @@ for m in range(len(temps)):
     energy[m] = n1*E1
 
 
+print("---%s seconds---" %(time()-start_time))  #prints main loop run time
+
+
+#---------------------
+#Graphs and Animations
+#---------------------
+
 '''Creates a list of domain equilibrium states at specific temperatures.
 This list will be used to create images.'''
-fig, axs = plt.subplots(nrows=6, figsize=(3, 5))
+fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(8, 6))
 for m in range(len(specific_temps)):
     T = specific_temps[m]
     state = initialize(n)
@@ -133,46 +139,36 @@ for m in range(len(specific_temps)):
         else:
             if np.random.random() < exp(-Ediff/T):
                 state[i,j] *= -1
-    axs[m].set_title('T=%s' %(specific_temps[m]))
-    axs[m].imshow(state, cmap='winter')
+    if m < 3:
+        axs[0,m].set_title('T=%s' %(specific_temps[m]))
+        axs[0,m].imshow(state, cmap='tab20c')
+        axs[0,m].set_xticks([])
+        axs[0,m].set_yticks([])
+    else:
+        axs[1,m-3].set_title('T=%s' %(specific_temps[m]))
+        axs[1,m-3].imshow(state, cmap='tab20c')
+        axs[1,m-3].set_xticks([])
+        axs[1,m-3].set_yticks([])
 
+plt.savefig('eqstates.jpg', format='jpg')
 plt.show()
-'''
-fig, axs = plt.subplots(nrows=6 figsize=(3, 5))
-axs[0,0].set_title('T=%s' %specific_temps[m])
-axs[0,0].imshow(eqstates[0], cmap='winter')
-axs[0,1].set_title('T=1.5')
-axs[0,1].imshow(eqstates[1], cmap='winter')
-axs[0,2].set_title('T=2')
-axs[0,2].imshow(eqstates[2], cmap='winter')
-axs[1,0].set_title('T=2.27')
-axs[1,0].imshow(eqstates[3], cmap='winter')
-axs[1,1].set_title('T=2.5')
-axs[1,1].imshow(eqstates[4], cmap='winter')
-axs[1,1].set_title('T=3')
-axs[1,2].imshow(eqstates[5], cmap='winter')
-plt.show()'''
+plt.close(fig)
 
 
+'''This Uses the results from the main loop to create
+graphs for magnetization/spin and energy/spin.'''
+fig = plt.figure(figsize = (15,5))
 
-
-print("---%s seconds---" %(time()-start_time))  #prints program run time
-
-
-#---------------------
-#Graphs and Animations
-#---------------------
-
-fig = plt.figure(figsize = (27,15))
-
-sub = fig.add_subplot(2,2,1)
+sub = fig.add_subplot(1,2,1)
 plt.plot(temps, abs(magnetization), 'o', markerfacecolor= "blue", markersize= 3)
 plt.xlabel("Temperature (T)", fontsize=12)
-plt.ylabel("Magnetization", fontsize=12)
+plt.ylabel("Magnetization per site", fontsize=12)
 
-sub = fig.add_subplot(2,2,2)
+sub = fig.add_subplot(1,2,2)
 plt.plot(temps, energy, 'o', markerfacecolor = 'green', markersize = 3)
 plt.xlabel("Temperature (T)", fontsize=12)
-plt.ylabel("Energy", fontsize=12)
+plt.ylabel("Energy per site", fontsize=12)
 
+plt.savefig("magnetizationAndEnergy.jpg", format='jpg')
 plt.show()
+plt.close(fig)
