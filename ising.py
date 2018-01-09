@@ -11,7 +11,7 @@ from time import time
 start_time = time()
 n = 20                 #used to create n x n domain
 N = n**2               #number of atoms in domain
-iterations = 10**5
+iterations = 10**7
 
 #creates a normalized distribution of temperature points around the mean_temp
 mean_temp = 2.27
@@ -29,8 +29,9 @@ specific_temps = [1,1.5,2,2.27,2.5,3] #temperatures used to create domain images
 #Functions Utilized by Main Loop
 #-------------------------------
 
-'''Creates a random array of dipole states'''
+
 def initialize(n_sites):
+    '''Creates a random array of dipole states'''
     state = np.zeros((n_sites, n_sites))
 
     for i in range(n_sites):
@@ -41,11 +42,12 @@ def initialize(n_sites):
                 state[i][j] = -1
     return state
 
-'''Computes dU of a flipping a dipole.
-This is a Monte Carlo algorithm using
-the Metropolis Algorithm. It has peridic
-boundary conditions.'''
+
 def deltaU(i,j,n_sites,state):
+    '''Computes dU of a flipping a dipole.
+    This is a Monte Carlo algorithm using
+    the Metropolis Algorithm. It has peridic
+    boundary conditions.'''
     m = n_sites-1    #max row/column entry
 
     if i == 0:
@@ -71,13 +73,15 @@ def deltaU(i,j,n_sites,state):
     dU = 2*state[i,j]*(top+bottom+left+right)
     return dU
 
-'''Computes overall magnetism of a state'''
+
 def Magnetization(state):
+    '''Computes overall magnetism of a state'''
     mag = np.sum(state)
     return mag
 
-'''Computes overall energy of a state'''
+
 def Energy(state):
+    '''Computes overall energy of a state'''
     global n
     energy = 0
     for i in range(len(state)):
@@ -106,14 +110,10 @@ for m in range(len(temps)):
         else:
             if np.random.random() < exp(-Ediff/T):
                 state[i,j] *= -1
-        Ene = Energy(state)
-        Mag = Magnetization(state)
-
-        E1 += Ene
-        M1 += Mag
-
-    magnetization[m] = n1*M1
-    energy[m] = n1*E1
+    Ene = Energy(state)
+    Mag = Magnetization(state)
+    magnetization[m] = Mag/N
+    energy[m] = Ene/N
 
 
 print("---%s seconds---" %(time()-start_time))  #prints main loop run time
@@ -161,6 +161,8 @@ fig = plt.figure(figsize = (15,5))
 
 sub = fig.add_subplot(1,2,1)
 plt.plot(temps, abs(magnetization), 'o', markerfacecolor= "blue", markersize= 3)
+plt.plot((2.27, 2.27), (0,1), 'k--')
+plt.text(2.3, 1, r'$T_c$')
 plt.xlabel("Temperature (T)", fontsize=12)
 plt.ylabel("Magnetization per site", fontsize=12)
 
